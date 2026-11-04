@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>한국어 캐릭터 포스터 초안</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Gowun+Dodum&family=Gowun+Batang:wght@700&display=swap');
+    :root {
+      --ink: #24302a;
+      --paper: #fff9ed;
+      --accent: #e46f4c;
+      --accent-soft: #f2c96b;
+      --green: #a9c6a4;
+      --font-body: 'Gowun Dodum', 'Malgun Gothic', sans-serif;
+      --font-display: 'Gowun Batang', 'Batang', serif;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #e8e8e4; color: var(--ink); font-family: var(--font-body); }
+    .poster {
+      width: min(100vw, 800px);
+      aspect-ratio: 4 / 5;
+      margin: 24px auto;
+      padding: 7% 7.5%;
+      display: grid;
+      grid-template-rows: auto auto 1fr auto;
+      overflow: hidden;
+      position: relative;
+      background: var(--paper);
+      isolation: isolate;
+    }
+    .poster-art {
+      position: absolute;
+      inset: 0;
+      z-index: -1;
+      background:
+        radial-gradient(ellipse at 70% 55%, #f2c96b99 0 16%, transparent 16.5%),
+        radial-gradient(ellipse at 66% 57%, #a9c6a488 0 29%, transparent 29.5%),
+        linear-gradient(145deg, var(--paper), #f8e8c8);
+    }
+    /* Replace the decorative placeholder with generated artwork; keep the text layers editable. */
+    .art-placeholder {
+      position: absolute; right: 5%; top: 26%; width: 56%; aspect-ratio: 1;
+      display: grid; place-items: center; text-align: center; font-size: clamp(1rem, 3vw, 1.5rem);
+      font-weight: bold; color: #24302a99; border: 2px dashed #24302a55; border-radius: 50%;
+      background: #fff9ed66;
+    }
+    .eyebrow { margin: 0 0 .7em; color: var(--accent); font-size: clamp(.72rem, 2vw, 1rem); font-weight: bold; letter-spacing: .16em; }
+    h1 { max-width: 75%; margin: 0; font-family: var(--font-display); font-size: clamp(2.2rem, 8vw, 5rem); line-height: 1.05; letter-spacing: -.06em; word-break: keep-all; }
+    .subtitle { max-width: 70%; margin: 1em 0 0; font-size: clamp(.9rem, 2.7vw, 1.35rem); line-height: 1.45; word-break: keep-all; }
+    .details { align-self: end; display: flex; flex-wrap: wrap; gap: .55rem; margin-bottom: 1.2rem; }
+    .detail { padding: .55em .8em; border: 1px solid currentColor; border-radius: 999px; font-size: clamp(.75rem, 2vw, 1rem); background: #fff9edcc; }
+    footer { display: flex; justify-content: space-between; gap: 1rem; border-top: 1px solid #24302a55; padding-top: .8rem; font-size: clamp(.65rem, 1.8vw, .9rem); }
+    @media print { body { background: white; } .poster { width: 100vw; margin: 0; } }
+  </style>
+</head>
+<body>
+  <main class="poster" aria-label="포스터 미리보기">
+    <div class="poster-art" aria-hidden="true"></div>
+    <div class="art-placeholder" aria-hidden="true">캐릭터 아트<br>영역</div>
+    <header>
+      <p class="eyebrow">행사 종류 · 짧은 소개</p>
+      <h1>포스터 제목을<br>여기에 입력</h1>
+      <p class="subtitle">캐릭터와 어울리는 한 줄 소개를 적어주세요.</p>
+    </header>
+    <div></div>
+    <section class="details" aria-label="행사 정보">
+      <span class="detail">날짜 · 시간</span>
+      <span class="detail">장소</span>
+      <span class="detail">참가 방법</span>
+    </section>
+    <footer>
+      <span>주최 · 주관</span>
+      <span>신청 링크 또는 문의</span>
+    </footer>
+  </main>
+</body>
+</html>
