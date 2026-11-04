@@ -1,13 +1,103 @@
-<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Poster Maker — AI Poster Maker</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&family=Noto+Sans+KR:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="/styles.css"></head><body>
-<header class="topbar"><a class="brand" href="/"><span class="brand-icon">P.</span><span>Poster Maker<small>AI DESIGN TOOL</small></span></a><div class="header-right"><span class="status-dot"></span><span>WORKSPACE</span><button class="avatar">U</button></div></header>
-<main id="studio"><section class="page-heading"><div><div class="eyebrow">Poster Maker <span>/</span> 새 작업</div><h1>글을 붙여넣고<br><em>포스터를 완성하세요.</em></h1><p>원문과 아이디어를 넣으면 AI가 어울리는 구성을 제안해요.</p></div><div class="heading-mark"><span>IDEAS<br>IN FORM</span><b>✳</b></div></section>
-<div class="studio-grid"><section class="brief-panel"><div class="section-heading"><div class="step">01</div><div><h2>포스터 내용을 입력해 주세요</h2><p>공지, 행사 안내, 캠페인 문구나 간단한 아이디어도 좋아요.</p></div></div><label class="sr-only" for="source">Poster source text</label><textarea id="source" class="source" maxlength="5000" placeholder="행사 소개나 메모를 붙여넣어 보세요...&#10;&#10;예: 11월 20일부터 22일까지 오래된 극장에서 독립영화제를 열어요. 영화 8편을 무료로 상영하고 금요일 저녁에는 감독과의 대화도 진행해요."></textarea><div class="source-meta"><span>형식 없이 편하게 입력하면 포스터에 맞게 정리해 드려요.</span><span id="char-count">0 / 5000</span></div>
-<div class="section-heading creative-heading"><div class="step">02</div><div><h2>디자인 방향을 정해요</h2><p>스타일, 비율, 포스터 문구 언어를 선택하세요.</p></div></div><div class="settings-grid"><div><label for="style">스타일</label><select id="style"><option>Auto recommend</option><option>Swiss Editorial</option><option>Bauhaus Modular</option><option>Neo Brutalist</option><option>Cinematic Key Art</option><option>Art Deco</option><option>Y2K Digital</option><option>Risograph</option><option>Cut-Paper Collage</option><option>Vintage Travel</option><option>Minimalist</option><option>Psychedelic</option><option>Pop Art</option><option>Editorial Illustration</option><option>Monochrome Typography</option><option>Memphis</option><option>Photo Essay</option><option>Screenprint</option><option>Geometric Modernism</option><option>Dreamlike Surreal</option><option>Corporate Modern</option></select></div><div><label for="ratio">비율</label><select id="ratio"><option>2:3</option><option>1:1</option><option>4:5</option><option>3:4</option><option>9:16</option><option>16:9</option></select></div><div><label for="language">문구 언어</label><select id="language"><option value="Korean">한국어</option><option value="English">English</option><option value="Japanese">日本語</option></select></div></div>
-<label class="upload" for="reference"><span class="upload-symbol">↥</span><span><b>캐릭터 또는 이미지 참고 자료 <i>선택</i></b><small>사용 권한이 있는 이미지 파일을 올려주세요.</small></span><input id="reference" type="file" accept="image/png,image/jpeg,image/webp"><span id="file-name" class="file-name"></span></label><button id="plan-button" class="primary"><span>구성안 만들기</span><span>→</span></button><div class="cost-note">문구 정리와 이미지 레이어 생성은 별도 API 요청이며 각각 사용료가 발생해요.</div>
-<div id="copy-editor" class="copy-editor hidden"><div class="section-heading"><div class="step">03</div><div><h2>구성안을 검토해 주세요</h2><p>사실 정보를 확인하고 문구를 다듬은 뒤 이미지를 만들어요.</p></div></div><div id="recommendation" class="recommendation hidden"><span class="sparkle">✳</span><span><small>AI STYLE RECOMMENDATION</small><b id="recommended-style"></b><i id="style-reason"></i></span></div><label for="title">HEADLINE</label><input id="title" maxlength="100"><label for="subtitle">SUPPORTING COPY</label><textarea id="subtitle" rows="2" maxlength="300"></textarea><label for="details">EVENT DETAILS <small>한 줄에 하나씩</small></label><textarea id="details" rows="4" maxlength="1200"></textarea><label for="background-prompt">배경 이미지 설명 <small>별도 레이어</small></label><textarea id="background-prompt" rows="3" maxlength="2000"></textarea><label class="layer-toggle"><input id="subject-needed" type="checkbox"><span>주 피사체를 별도 이미지로 생성</span><small>캐릭터·제품·주인공 등</small></label><label for="subject-prompt">주 피사체 설명 <small>투명 배경 레이어</small></label><textarea id="subject-prompt" rows="3" maxlength="2000"></textarea><button id="generate-button" class="primary"><span>레이어별 이미지 생성</span><span>✳</span></button></div></section>
-<section class="preview-panel"><div class="preview-top"><div class="section-heading"><div class="step">04</div><div><h2 id="result-title">미리보기와 저장</h2><p id="result-sub">구성을 확인하고 포스터를 내려받으세요.</p></div></div><div class="export-actions"><button id="svg-button" disabled>SVG <small>EDITABLE</small></button><button id="png-button" class="download" disabled>PNG 저장 ↓</button></div></div><div class="preview-stage"><div class="poster ratio-2-3 style-auto" id="poster"><div class="poster-art" id="art-placeholder"><div class="art-shape shape-a"></div><div class="art-shape shape-b"></div><div class="art-shape shape-c"></div><div class="placeholder-text">포스터 미리보기<br><small>아이디어 → 구성안 → 이미지</small></div></div><div class="poster-overlay"></div><div class="poster-content"><div class="poster-topline"><span>VISUAL COMMUNICATION</span><span>№ 001</span></div><div class="poster-main"><span id="poster-subtitle" class="poster-subtitle">A NEW CREATIVE PROJECT</span><h3 id="poster-title">아이디어를<br>포스터로</h3></div><div class="poster-bottom"><div id="poster-details">내용을 입력하고<br>구성안을 만들어 보세요.</div><span class="poster-seal">P<br>MAKER</span></div></div></div></div><div class="preview-meta"><span id="ratio-label">2:3 PORTRAIT</span><span>문구 미리보기</span><span>PNG · SVG</span></div><div id="status" class="status" aria-live="polite"><span class="status-icon">i</span><span>원문을 붙여넣고 구성안을 만들어 보세요.</span></div><div class="format-card"><div class="format-icon">T</div><div><b>디자이너를 위한 편집 파일</b><p>SVG에서 배경·주 피사체·문구를 각각 선택할 수 있어요. Photoshop용 PSD 내보내기는 아직 지원하지 않아요.</p></div></div></section></div></main><footer><span>Poster Maker <i>개인 프로젝트</i></span><span>GLOBAL DESIGN STYLES</span></footer><script src="/app.js" defer></script></body></html>
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Poster Maker — AI Poster Maker</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&family=Noto+Sans+KR:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/editor.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/"><span class="brand-icon">P.</span><span>Poster Maker<small>AI DESIGN TOOL</small></span></a>
+    <div class="header-right"><span class="status-dot"></span><span>WORKSPACE</span><button class="avatar">U</button></div>
+  </header>
 
+  <main id="studio">
+    <section class="page-heading">
+      <div>
+        <div class="eyebrow">Poster Maker <span>/</span> 새 작업</div>
+        <h1>글을 붙여넣고<br><em>포스터를 완성하세요.</em></h1>
+        <p>원문과 아이디어를 넣으면 AI가 어울리는 구성을 제안해요.</p>
+      </div>
+      <div class="heading-mark"><span>IDEAS<br>IN FORM</span><b>✳</b></div>
+    </section>
 
+    <div class="studio-grid">
+      <section class="brief-panel">
+        <div class="section-heading"><div class="step">01</div><div><h2>포스터 내용을 입력해 주세요</h2><p>공지, 행사 안내, 캠페인 문구나 간단한 아이디어도 좋아요.</p></div></div>
+        <label class="sr-only" for="source">Poster source text</label>
+        <textarea id="source" class="source" maxlength="5000" placeholder="행사 소개나 메모를 붙여넣어 보세요...&#10;&#10;예: 11월 20일부터 22일까지 오래된 극장에서 독립영화제를 열어요. 영화 8편을 무료로 상영하고 금요일 저녁에는 감독과의 대화도 진행해요."></textarea>
+        <div class="source-meta"><span>형식 없이 편하게 입력하면 포스터에 맞게 정리해 드려요.</span><span id="char-count">0 / 5000</span></div>
 
+        <div class="section-heading creative-heading"><div class="step">02</div><div><h2>디자인 방향을 정해요</h2><p>스타일, 비율, 포스터 문구 언어를 선택하세요.</p></div></div>
+        <div class="settings-grid">
+          <div><label for="style">스타일</label><select id="style"><option>Auto recommend</option><option>Swiss Editorial</option><option>Bauhaus Modular</option><option>Neo Brutalist</option><option>Cinematic Key Art</option><option>Art Deco</option><option>Y2K Digital</option><option>Risograph</option><option>Cut-Paper Collage</option><option>Vintage Travel</option><option>Minimalist</option><option>Psychedelic</option><option>Pop Art</option><option>Editorial Illustration</option><option>Monochrome Typography</option><option>Memphis</option><option>Photo Essay</option><option>Screenprint</option><option>Geometric Modernism</option><option>Dreamlike Surreal</option><option>Corporate Modern</option></select></div>
+          <div><label for="ratio">비율</label><select id="ratio"><option>2:3</option><option>1:1</option><option>4:5</option><option>3:4</option><option>9:16</option><option>16:9</option></select></div>
+          <div><label for="language">문구 언어</label><select id="language"><option value="Korean">한국어</option><option value="English">English</option><option value="Japanese">日本語</option></select></div>
+        </div>
 
+        <label class="upload" for="reference"><span class="upload-symbol">↥</span><span><b>캐릭터 또는 이미지 참고 자료 <i>선택</i></b><small>사용 권한이 있는 이미지 파일을 올려주세요.</small></span><input id="reference" type="file" accept="image/png,image/jpeg,image/webp"><span id="file-name" class="file-name"></span></label>
+        <button id="plan-button" class="primary"><span>구성안 만들기</span><span>→</span></button>
+        <div class="cost-note">문구 정리와 이미지 레이어 생성은 별도 API 요청이며 각각 사용료가 발생해요.</div>
 
+        <div id="copy-editor" class="copy-editor hidden">
+          <div class="section-heading"><div class="step">03</div><div><h2>구성안을 검토해 주세요</h2><p>사실 정보를 확인하고 문구를 다듬은 뒤 이미지를 만들어요.</p></div></div>
+          <div id="recommendation" class="recommendation hidden"><span class="sparkle">✳</span><span><small>AI STYLE RECOMMENDATION</small><b id="recommended-style"></b><i id="style-reason"></i></span></div>
+          <label for="title">HEADLINE</label>
+          <input id="title" maxlength="100">
+          <label class="layer-toggle title-art-toggle"><input id="art-title-enabled" type="checkbox"><span>제목을 줄별 그림 글씨로 생성</span><small>줄마다 이미지 API 1회 추가</small></label>
+          <label for="subtitle">SUPPORTING COPY</label>
+          <textarea id="subtitle" rows="2" maxlength="300"></textarea>
+          <label class="layer-toggle title-art-toggle"><input id="art-subtitle-enabled" type="checkbox"><span>부제목을 줄별 그림 글씨로 생성</span><small>줄마다 이미지 API 1회 추가</small></label>
+          <label for="details">EVENT DETAILS <small>한 줄에 하나씩</small></label>
+          <textarea id="details" rows="4" maxlength="1200"></textarea>
+          <label class="layer-toggle title-art-toggle"><input id="art-details-enabled" type="checkbox"><span>상세 정보를 줄별 그림 글씨로 생성</span><small>줄마다 이미지 API 1회 추가</small></label>
+          <p class="field-note">그림 글씨를 선택하면 문구의 각 줄마다 별도 이미지 요청이 발생해요. 생성된 각 줄은 따로 선택·이동·회전할 수 있고, 원래 문구는 SVG에 숨김 텍스트로 보존돼요. 한글 표현은 생성 결과를 확인해 주세요.</p>
+          <label for="background-prompt">배경 이미지 설명 <small>별도 레이어</small></label>
+          <textarea id="background-prompt" rows="3" maxlength="2000"></textarea>
+          <label class="layer-toggle"><input id="subject-needed" type="checkbox"><span>주 피사체를 별도 이미지로 생성</span><small>캐릭터·제품·주인공 등</small></label>
+          <label for="subject-prompt">주 피사체 설명 <small>투명 배경 레이어</small></label>
+          <textarea id="subject-prompt" rows="3" maxlength="2000"></textarea>
+          <button id="generate-button" class="primary"><span>레이어별 이미지 생성</span><span>✳</span></button>
+        </div>
+      </section>
+
+      <section class="preview-panel">
+        <div class="preview-top">
+          <div class="section-heading"><div class="step">04</div><div><h2 id="result-title">미리보기와 저장</h2><p id="result-sub">구성을 확인하고 포스터를 내려받으세요.</p></div></div>
+          <div class="export-actions"><button id="svg-button" disabled>SVG <small>EDITABLE</small></button><button id="png-button" class="download" disabled>PNG 저장 ↓</button></div>
+        </div>
+
+        <div id="editor-toolbar" class="editor-toolbar" hidden>
+          <div class="toolbar-heading"><span class="toolbar-dot"></span><b>선택한 개체 편집</b><small>포스터에서 문구 줄이나 피사체를 클릭해 선택하고 드래그하세요.</small></div>
+          <div class="toolbar-controls">
+            <label class="toolbar-field target-field">개체<select id="editor-target"><option value="title">제목 텍스트</option><option value="subtitle">부제목 텍스트</option><option value="details">상세 정보 텍스트</option><option value="subject" disabled>주 피사체</option></select></label>
+            <div id="text-tools" class="text-tools">
+              <label class="toolbar-field font-field">글꼴<select id="editor-font"><option value="Noto Sans KR, sans-serif">Noto Sans KR</option><option value="DM Sans, sans-serif">DM Sans</option><option value="Playfair Display, serif">Playfair Display</option><option value="DM Mono, monospace">DM Mono</option><option value="Georgia, serif">Georgia</option></select></label>
+              <label class="toolbar-field small-field">크기<input id="editor-size" type="number" min="12" max="180" step="1"></label>
+              <label class="toolbar-field small-field">행간<input id="editor-line-height" type="number" min="0.8" max="2.4" step="0.05"></label>
+              <label class="toolbar-field small-field">자간<input id="editor-letter-spacing" type="number" min="-12" max="40" step="0.5"></label>
+              <label class="toolbar-field color-field">글자색<input id="editor-color" type="color" value="#fffaf2"></label>
+              <label class="shadow-toggle"><input id="editor-shadow" type="checkbox"><span>그림자</span></label>
+            </div>
+            <div id="image-tools" class="image-tools" hidden><label>크기<input id="editor-image-scale" type="range" min="25" max="400" step="1" value="100"><b id="editor-image-scale-label">100%</b></label></div>
+            <label class="rotation-tool">회전<input id="editor-rotation" type="range" min="-180" max="180" step="1" value="0"><b id="editor-rotation-label">0°</b></label>
+            <button id="reset-object" class="reset-object" type="button">선택 개체 초기화</button>
+          </div>
+        </div>
+
+        <div class="preview-stage"><div class="poster ratio-2-3 style-auto" id="poster"><div class="poster-art" id="art-placeholder"><div class="art-shape shape-a"></div><div class="art-shape shape-b"></div><div class="art-shape shape-c"></div><div class="placeholder-text">포스터 미리보기<br><small>아이디어 → 구성안 → 이미지</small></div></div><div class="poster-overlay"></div><div class="poster-content"><div class="poster-topline"><span>VISUAL COMMUNICATION</span><span>№ 001</span></div><div class="poster-main"><span id="poster-subtitle" class="poster-subtitle">A NEW CREATIVE PROJECT</span><h3 id="poster-title">아이디어를<br>포스터로</h3></div><div class="poster-bottom"><div id="poster-details">내용을 입력하고<br>구성안을 만들어 보세요.</div><span class="poster-seal">P<br>MAKER</span></div></div></div></div>
+        <div class="preview-meta"><span id="ratio-label">2:3 PORTRAIT</span><span>문구 미리보기</span><span>PNG · SVG</span></div>
+        <div id="status" class="status" aria-live="polite"><span class="status-icon">i</span><span>원문을 붙여넣고 구성안을 만들어 보세요.</span></div>
+        <div class="format-card"><div class="format-icon">T</div><div><b>디자이너를 위한 편집 파일</b><p>일반 텍스트와 그림 글씨 모두 줄마다 따로 선택·이동·회전할 수 있어요. Photoshop용 PSD 내보내기는 아직 지원하지 않아요.</p></div></div>
+      </section>
+    </div>
+  </main>
+  <footer><span>Poster Maker <i>개인 프로젝트</i></span><span>GLOBAL DESIGN STYLES</span></footer>
+  <script src="/app.js" defer></script>
+</body>
+</html>
