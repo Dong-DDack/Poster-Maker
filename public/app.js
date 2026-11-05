@@ -7,17 +7,20 @@ const poster = $('poster');
 const status = $('status');
 const toolbar = $('editor-toolbar');
 
-let referenceImage = '';
 let backgroundData = '';
-let subjectAsset = null;
-let textArtAssets = { title: [], subtitle: [], details: [] };
-let textArtOutdated = { title: false, subtitle: false, details: false };
+let subjectAssets = [];
+let subjectAssetCatalog = [];
+let subjectPlan = null;
 let plan = null;
 let editorObjects = {};
 let defaultObjects = {};
 let selectedObject = 'title';
 let needsRegenerate = false;
 let activeDrag = null;
+let editHistory = [];
+let historyIndex = -1;
+let historyTimer = null;
+let restoringHistory = false;
 
 const ratioSizes = {
   '1:1': [1080, 1080],
@@ -28,13 +31,100 @@ const ratioSizes = {
   '16:9': [1600, 900]
 };
 const fontOptions = {
-  title: { family: 'Noto Sans KR, sans-serif', color: '#fffaf2', shadow: true, letterSpacing: -1, lineHeight: 1.08 },
-  subtitle: { family: 'DM Sans, Noto Sans KR, sans-serif', color: '#d9e7c2', shadow: true, letterSpacing: 1.2, lineHeight: 1.25 },
-  details: { family: 'DM Sans, Noto Sans KR, sans-serif', color: '#fffaf2', shadow: true, letterSpacing: 0, lineHeight: 1.35 }
+  title: { family: "Arial, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif", color: '#fffaf2', shadow: true, letterSpacing: -1, lineHeight: 1.08 },
+  subtitle: { family: "Arial, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif", color: '#d9e7c2', shadow: true, letterSpacing: 1.2, lineHeight: 1.25 },
+  details: { family: "Arial, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif", color: '#fffaf2', shadow: true, letterSpacing: 0, lineHeight: 1.35 }
 };
 const styleClass = name => 'style-' + String(name || 'auto').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+const styleLabels = {
+  'Auto recommend': '자동 추천',
+  'Public Campaign Cinematic': '공익 캠페인 시네마틱',
+  'Minimal Still Life': '미니멀 정물',
+  'Human-centered Documentary': '인물 중심 다큐멘터리',
+  'Editorial Campaign': '에디토리얼 캠페인'
+};
 
 source.addEventListener('input', () => $('char-count').textContent = `${source.value.length} / 5000`);
+
+function captureEditState() {
+  return {
+    title: $('title').value,
+    subtitle: $('subtitle').value,
+    details: $('details').value,
+    editorObjects: structuredClone(editorObjects),
+    subjectIds: subjectAssets.map(asset => asset.id),
+    selectedObject
+  };
+}
+
+function updateHistoryButtons() {
+  $('undo-button').disabled = historyIndex <= 0;
+  $('redo-button').disabled = historyIndex < 0 || historyIndex >= editHistory.length - 1;
+}
+
+function recordEditState() {
+  if (restoringHistory || !plan || !backgroundData) return;
+  clearTimeout(historyTimer);
+  historyTimer = null;
+  const state = captureEditState();
+  const previous = editHistory[historyIndex];
+  if (previous && JSON.stringify(previous) === JSON.stringify(state)) return;
+  editHistory = editHistory.slice(0, historyIndex + 1);
+  editHistory.push(state);
+  if (editHistory.length > 100) editHistory.shift();
+  historyIndex = editHistory.length - 1;
+  updateHistoryButtons();
+}
+
+function scheduleEditState() {
+  if (restoringHistory || !plan || !backgroundData) return;
+  clearTimeout(historyTimer);
+  historyTimer = setTimeout(recordEditState, 350);
+}
+
+function resetEditHistory() {
+  clearTimeout(historyTimer);
+  editHistory = [captureEditState()];
+  historyIndex = 0;
+  updateHistoryButtons();
+}
+
+function restoreEditState(state) {
+  if (!state) return;
+  restoringHistory = true;
+  $('title').value = state.title;
+  $('subtitle').value = state.subtitle;
+  $('details').value = state.details;
+  editorObjects = structuredClone(state.editorObjects);
+  selectedObject = state.selectedObject;
+  subjectAssets = (state.subjectIds || []).map(id => subjectAssetCatalog.find(asset => asset.id === id)).filter(Boolean);
+  $('editor-target').value = selectedObject;
+  layoutTextObjects();
+  $('editor-target').value = selectedObject;
+  updatePoster();
+  setImageOptions();
+  restoringHistory = false;
+}
+
+function undoEdit() {
+  clearTimeout(historyTimer);
+  historyTimer = null;
+  recordEditState();
+  if (historyIndex <= 0) return;
+  historyIndex -= 1;
+  restoreEditState(editHistory[historyIndex]);
+  updateHistoryButtons();
+}
+
+function redoEdit() {
+  clearTimeout(historyTimer);
+  historyTimer = null;
+  recordEditState();
+  if (historyIndex >= editHistory.length - 1) return;
+  historyIndex += 1;
+  restoreEditState(editHistory[historyIndex]);
+  updateHistoryButtons();
+}
 
 function setStatus(message, error = false) {
   status.querySelector('span:last-child').textContent = message;
@@ -69,12 +159,28 @@ function wrapLines(text, maxChars) {
 
 function clamp(value, min, max) { return Math.min(max, Math.max(min, value)); }
 
+function isSubjectObject(id) { return /^subject-\d+$/.test(id || ''); }
+
+function getSubjectAsset(id) { return subjectAssets.find(asset => asset.id === id); }
+
+function getSubjectPlan(data) {
+  const subject = data.subject;
+  if (subject && typeof subject === 'object' && subject.prompt) {
+    return { ...subject, id: 'subject-1', name: subject.name || '캠페인 상징 피사체' };
+  }
+  const brief = `${data.title || ''} ${data.subtitle || ''} ${source.value}`;
+  if (/무단횡단|횡단보도|보행자.?사고|보행.?안전|교통.?안전/.test(brief)) {
+    return { id: 'subject-1', name: '무단횡단 보행자', idea: '신호를 무시하고 차도로 들어서는 보행자', prompt: 'A single young adult pedestrian stepping into a crosswalk against a red pedestrian signal, full body, clear recognizable pose.' };
+  }
+  const basePrompt = String(data.subject_prompt || `${source.value}.`).trim();
+  return { id: 'subject-1', name: '캠페인 상징 피사체', idea: '캠페인 메시지를 가장 잘 나타내는 핵심 피사체', prompt: `${basePrompt}. Create exactly one clear, recognizable subject directly related to the campaign message.` };
+}
+
 function refreshTextLineOptions() {
   const select = $('editor-target');
   const selected = select.value;
   select.querySelectorAll('option[data-line-option]').forEach(option => option.remove());
   select.querySelectorAll('option[value="title"],option[value="subtitle"],option[value="details"]').forEach(option => option.remove());
-  select.querySelectorAll('option[value="art-title"],option[value="art-subtitle"],option[value="art-details"]').forEach(option => option.remove());
   const groups = [
     ['title', '제목'],
     ['subtitle', '부제목'],
@@ -88,20 +194,10 @@ function refreshTextLineOptions() {
       option.value = id;
       option.dataset.lineOption = 'true';
       option.textContent = `${label} ${id.slice(id.lastIndexOf('-') + 1)}번째 줄`;
-      option.disabled = Boolean(textArtAssets[key]?.length && !textArtOutdated[key] && $(`art-${key}-enabled`).checked);
-      fragment.append(option);
-    }
-    const artLineCount = textArtAssets[key]?.length || 0;
-    for (let index = 1; index <= artLineCount; index++) {
-      const option = document.createElement('option');
-      option.value = `art-${key}-line-${index}`;
-      option.dataset.lineOption = 'true';
-      option.textContent = `${label} 그림 글씨 ${index}번째 줄`;
-      option.disabled = textArtOutdated[key] || !$(`art-${key}-enabled`).checked;
       fragment.append(option);
     }
   }
-  select.insertBefore(fragment, select.querySelector('option[value="subject"]'));
+  select.insertBefore(fragment, select.querySelector('[data-subject-placeholder]'));
   if ([...select.options].some(option => option.value === selected && !option.disabled)) select.value = selected;
   else {
     const fallback = [...select.options].find(option => !option.disabled);
@@ -170,13 +266,13 @@ function layoutTextObjects() {
   return { width, height, marginX, maxWidth, titleLines, detailLines };
 }
 
-function textGroup(id, object, value, lines, opacity = 1) {
-  const filter = object.shadow ? ' filter="url(#soft-shadow)"' : '';
+function textGroup(id, object, lines) {
   return lines.map((line, index) => {
     const lineId = `${id}-line-${index + 1}`;
     const item = editorObjects[lineId] || { ...object, y: object.y + index * object.fontSize * object.lineHeight, rotation: 0 };
     const transform = `translate(${item.x} ${item.y}) rotate(${item.rotation || 0})`;
-    return `<g id="editable-${lineId}" class="editable-object" data-editable-object="${lineId}" data-x="${item.x}" data-y="${item.y}" transform="${transform}" opacity="${opacity}"${opacity === 0 ? ' pointer-events="none"' : ''}><text x="0" y="0" font-family="${escapeXml(item.family)}" font-size="${item.fontSize}" font-weight="${id === 'title' ? 700 : 500}" letter-spacing="${item.letterSpacing}" line-height="${item.lineHeight}" fill="${item.color}"${filter}>${escapeXml(line)}</text></g>`;
+    const filter = item.shadow ? ' filter="url(#soft-shadow)"' : '';
+    return `<g id="editable-${lineId}" class="editable-object" data-editable-object="${lineId}" data-x="${item.x}" data-y="${item.y}" transform="${transform}"><text x="0" y="0" font-family="${escapeXml(item.family)}" font-size="${item.fontSize}" font-weight="${id === 'title' ? 700 : 500}" letter-spacing="${item.letterSpacing}" line-height="${item.lineHeight}" fill="${item.color}"${filter}>${escapeXml(line)}</text></g>`;
   }).join('');
 }
 
@@ -195,19 +291,17 @@ function makeSvg(exportSize = false) {
   const maxWidth = width - marginX * 2;
   const svgWidth = exportSize ? width : '100%';
   const svgHeight = exportSize ? height : '100%';
-  const subjectNode = imageGroup('subject', subjectAsset, editorObjects.subject, width, height);
-  const showTextArt = Object.fromEntries(['title', 'subtitle', 'details'].map(key => [key, Boolean(textArtAssets[key]?.length && !textArtOutdated[key] && $(`art-${key}-enabled`).checked)]));
-  const textArtNodes = Object.fromEntries(['title', 'subtitle', 'details'].map(key => [key, showTextArt[key] ? textArtAssets[key].map((asset, index) => imageGroup(`art-${key}-line-${index + 1}`, asset, editorObjects[`art-${key}-line-${index + 1}`], width, height)).join('') : '']));
+  const subjectNodes = subjectAssets.map(asset => imageGroup(asset.id, asset, editorObjects[asset.id], width, height)).join('');
   const titleMaxChars = Math.max(5, Math.floor(maxWidth / (editorObjects.title.fontSize * .92)));
   const subtitleMaxChars = Math.max(8, Math.floor(maxWidth / (editorObjects.subtitle.fontSize * .9)));
   const detailsMaxChars = Math.max(10, Math.floor(maxWidth / (editorObjects.details.fontSize * .95)));
   const titleLines = wrapLines($('title').value, titleMaxChars);
   const subtitleLines = wrapLines($('subtitle').value, subtitleMaxChars);
   const detailLines = wrapLines($('details').value, detailsMaxChars);
-  const titleText = textGroup('title', editorObjects.title, $('title').value, titleLines, showTextArt.title ? 0 : 1);
-  const subtitleText = textGroup('subtitle', editorObjects.subtitle, $('subtitle').value, subtitleLines, showTextArt.subtitle ? 0 : 1);
-  const detailText = textGroup('details', editorObjects.details, $('details').value, detailLines, showTextArt.details ? 0 : 1);
-  return `<svg xmlns="http://www.w3.org/2000/svg" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" width="${svgWidth}" height="${svgHeight}" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" class="poster-artwork"><defs><linearGradient id="poster-shade" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="#090b0c" stop-opacity=".14"/><stop offset="43%" stop-color="#090b0c" stop-opacity=".02"/><stop offset="100%" stop-color="#070909" stop-opacity=".72"/></linearGradient><filter id="soft-shadow" x="-30%" y="-30%" width="160%" height="170%"><feDropShadow dx="0" dy="4" stdDeviation="5" flood-color="#000000" flood-opacity=".55"/></filter></defs><g id="01-background" inkscape:label="Background"><image id="background-image" x="0" y="0" width="${width}" height="${height}" preserveAspectRatio="xMidYMid slice" href="${backgroundData}"/></g>${subjectNode}<rect id="poster-shading" x="0" y="0" width="${width}" height="${height}" fill="url(#poster-shade)" pointer-events="none"/><g id="03-typography" inkscape:label="Typography">${subtitleText}${textArtNodes.subtitle}${titleText}${textArtNodes.title}<path id="accent-rule" d="M${marginX} ${height - Math.round(height * .13)}h${Math.round(width * .042)}" stroke="#c2f078" stroke-width="4" pointer-events="none"/>${detailText}${textArtNodes.details}</g></svg>`;
+  const titleText = textGroup('title', editorObjects.title, titleLines);
+  const subtitleText = textGroup('subtitle', editorObjects.subtitle, subtitleLines);
+  const detailText = textGroup('details', editorObjects.details, detailLines);
+  return `<svg xmlns="http://www.w3.org/2000/svg" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" width="${svgWidth}" height="${svgHeight}" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" class="poster-artwork"><defs><linearGradient id="poster-shade" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="#090b0c" stop-opacity=".14"/><stop offset="43%" stop-color="#090b0c" stop-opacity=".02"/><stop offset="100%" stop-color="#070909" stop-opacity=".72"/></linearGradient><filter id="soft-shadow" x="-30%" y="-30%" width="160%" height="170%"><feDropShadow dx="0" dy="4" stdDeviation="5" flood-color="#000000" flood-opacity=".55"/></filter></defs><g id="01-background" inkscape:label="Background"><image id="background-image" x="0" y="0" width="${width}" height="${height}" preserveAspectRatio="xMidYMid slice" href="${backgroundData}"/></g>${subjectNodes}<rect id="poster-shading" x="0" y="0" width="${width}" height="${height}" fill="url(#poster-shade)" pointer-events="none"/><g id="03-typography" inkscape:label="Typography">${subtitleText}${titleText}${detailText}</g></svg>`;
 }
 
 function updateSelectionOutline() {
@@ -226,12 +320,24 @@ function svgPoint(svg, event) {
 function bindObjectDragging() {
   const svg = poster.querySelector('svg');
   if (!svg) return;
+  svg.addEventListener('dblclick', event => {
+    const target = event.target.closest('[data-editable-object]');
+    if (!target || !/^(title|subtitle|details)-line-\d+$/.test(target.dataset.editableObject)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    selectedObject = target.dataset.editableObject;
+    $('editor-target').value = selectedObject;
+    setImageOptions();
+    openInlineTextEditor(target);
+  });
   svg.addEventListener('pointerdown', event => {
     const target = event.target.closest('[data-editable-object]');
     if (!target) return;
+    if (event.detail > 1 && /^(title|subtitle|details)-line-\d+$/.test(target.dataset.editableObject)) return;
     selectedObject = target.dataset.editableObject;
+    if (document.activeElement instanceof HTMLElement && document.activeElement !== document.body) document.activeElement.blur();
     $('editor-target').value = selectedObject;
-    syncToolbar();
+    setImageOptions();
     updateSelectionOutline();
     const point = svgPoint(svg, event);
     activeDrag = { pointerId: event.pointerId, target, point, x: Number(target.dataset.x), y: Number(target.dataset.y) };
@@ -257,14 +363,60 @@ function bindObjectDragging() {
   });
   const finishDrag = event => {
     if (!activeDrag || event.pointerId !== activeDrag.pointerId) return;
-    if (selectedObject === 'subject' && subjectAsset) {
-      subjectAsset.x = editorObjects.subject.x;
-      subjectAsset.y = editorObjects.subject.y;
+    if (isSubjectObject(selectedObject)) {
+      const asset = getSubjectAsset(selectedObject);
+      if (asset) { asset.x = editorObjects[selectedObject].x; asset.y = editorObjects[selectedObject].y; }
     }
     activeDrag = null;
+    recordEditState();
   };
   svg.addEventListener('pointerup', finishDrag);
   svg.addEventListener('pointercancel', finishDrag);
+}
+
+function openInlineTextEditor(target) {
+  const objectId = target.dataset.editableObject;
+  const group = objectId.match(/^(title|subtitle|details)-line-/)?.[1];
+  const textNode = target.querySelector('text');
+  if (!group || !textNode) return;
+  const oldText = textNode.textContent;
+  const rect = textNode.getBoundingClientRect();
+  const editor = document.createElement('input');
+  editor.type = 'text';
+  editor.className = 'poster-inline-editor';
+  editor.value = oldText;
+  editor.setAttribute('aria-label', '선택한 포스터 문구 편집');
+  editor.style.left = `${Math.max(8, rect.left - 5)}px`;
+  editor.style.top = `${Math.max(8, rect.top - 4)}px`;
+  editor.style.width = `${Math.min(window.innerWidth - Math.max(8, rect.left - 5) - 8, Math.max(180, rect.width + 100))}px`;
+  editor.style.height = `${Math.max(38, rect.height + 12)}px`;
+  document.body.append(editor);
+  editor.focus();
+  editor.select();
+  let finished = false;
+  const close = save => {
+    if (finished) return;
+    finished = true;
+    const newText = editor.value.trim();
+    editor.remove();
+    if (!save || !newText || newText === oldText) return;
+    const input = $(group);
+    const sourceText = input.value;
+    const lineIndex = Number(objectId.slice(objectId.lastIndexOf('-') + 1)) - 1;
+    const maxChars = group === 'title' ? Math.max(5, Math.floor((ratioSizes[ratio.value][0] * .86) / (editorObjects[group].fontSize * .92)))
+      : group === 'subtitle' ? Math.max(8, Math.floor((ratioSizes[ratio.value][0] * .86) / (editorObjects[group].fontSize * .9)))
+        : Math.max(10, Math.floor((ratioSizes[ratio.value][0] * .86) / (editorObjects[group].fontSize * .95)));
+    const visualLines = sourceText.split('\n').flatMap(line => wrapLines(line, maxChars));
+    const sourceLine = visualLines[lineIndex] || oldText;
+    input.value = sourceText.replace(sourceLine, newText);
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    setStatus('선택한 문구를 수정했어요. 툴바에서 글꼴, 크기, 색상 등을 조정할 수 있어요.');
+  };
+  editor.addEventListener('keydown', event => {
+    if (event.key === 'Enter') { event.preventDefault(); close(true); }
+    if (event.key === 'Escape') { event.preventDefault(); close(false); }
+  });
+  editor.addEventListener('blur', () => close(true), { once: true });
 }
 
 function updatePoster() {
@@ -313,9 +465,60 @@ function resetSelectedObject() {
   const initial = defaultObjects[selectedObject];
   if (!initial || !editorObjects[selectedObject]) return;
   editorObjects[selectedObject] = { ...initial };
-  if (selectedObject === 'subject' && subjectAsset) { subjectAsset.x = initial.x; subjectAsset.y = initial.y; }
+  if (isSubjectObject(selectedObject)) {
+    const asset = getSubjectAsset(selectedObject);
+    if (asset) { asset.x = initial.x; asset.y = initial.y; asset.scale = initial.scale; }
+  }
   syncToolbar();
   updatePoster();
+  scheduleEditState();
+}
+
+function getVisualTextLineRange(text, maxChars, targetIndex) {
+  let visualIndex = 0;
+  let sourceOffset = 0;
+  for (const paragraph of String(text).split('\n')) {
+    let paragraphOffset = 0;
+    for (const chunk of wrapLines(paragraph, maxChars)) {
+      if (visualIndex === targetIndex) return { start: sourceOffset + paragraphOffset, end: sourceOffset + paragraphOffset + chunk.length };
+      paragraphOffset += chunk.length;
+      visualIndex += 1;
+    }
+    sourceOffset += paragraph.length + 1;
+  }
+  return null;
+}
+
+function deleteSelectedObject() {
+  if (isSubjectObject(selectedObject)) {
+    const asset = getSubjectAsset(selectedObject);
+    if (!asset) return;
+    subjectAssets = subjectAssets.filter(item => item.id !== selectedObject);
+    delete editorObjects[selectedObject];
+    selectedObject = 'title-line-1';
+    $('editor-target').value = selectedObject;
+    updatePoster();
+    setImageOptions();
+    setStatus(`피사체 “${asset.name}”을 삭제했어요. Ctrl+Z로 되돌릴 수 있어요.`);
+    recordEditState();
+    return;
+  }
+
+  const match = selectedObject.match(/^(title|subtitle|details)-line-(\d+)$/);
+  if (!match) return;
+  const [, group, lineNumber] = match;
+  const [width] = ratioSizes[ratio.value];
+  const base = editorObjects[group];
+  const factor = group === 'title' ? .92 : group === 'subtitle' ? .9 : .95;
+  const minimum = group === 'title' ? 5 : group === 'subtitle' ? 8 : 10;
+  const maxChars = Math.max(minimum, Math.floor((width * .86) / (base.fontSize * factor)));
+  const input = $(group);
+  const range = getVisualTextLineRange(input.value, maxChars, Number(lineNumber) - 1);
+  if (!range || range.start === range.end) return;
+  input.value = input.value.slice(0, range.start) + input.value.slice(range.end);
+  input.dispatchEvent(new Event('input', { bubbles: true }));
+  setStatus('선택한 문구 줄을 삭제했어요. Ctrl+Z로 되돌릴 수 있어요.');
+  recordEditState();
 }
 
 function setTextStyle(key, value) {
@@ -328,15 +531,20 @@ function setTextStyle(key, value) {
   object.color = $('editor-color').value;
   object.shadow = $('editor-shadow').checked;
   updatePoster();
+  scheduleEditState();
 }
 
 function updateImageScale() {
   const object = editorObjects[selectedObject];
   if (!object || !object.width) return;
   object.scale = Number($('editor-image-scale').value);
-  if (selectedObject === 'subject' && subjectAsset) subjectAsset.scale = object.scale;
+  if (isSubjectObject(selectedObject)) {
+    const asset = getSubjectAsset(selectedObject);
+    if (asset) asset.scale = object.scale;
+  }
   $('editor-image-scale-label').textContent = `${object.scale}%`;
   updatePoster();
+  scheduleEditState();
 }
 
 function updateRotation() {
@@ -345,12 +553,46 @@ function updateRotation() {
   object.rotation = Number($('editor-rotation').value);
   $('editor-rotation-label').textContent = `${object.rotation}°`;
   updatePoster();
+  scheduleEditState();
+}
+
+function renderSubjectDownloads() {
+  const container = $('subject-downloads');
+  container.replaceChildren();
+  for (const asset of subjectAssets) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.textContent = `${asset.name} PNG`;
+    button.disabled = !backgroundData;
+    button.addEventListener('click', () => saveDataUrl(asset.data, `${asset.id}-${asset.name.replace(/[^가-힣a-z0-9]+/gi, '-')}.png`));
+    container.append(button);
+  }
 }
 
 function setImageOptions() {
-  $('editor-target').querySelector('option[value="subject"]').disabled = !subjectAsset;
+  const select = $('editor-target');
+  const placeholder = select.querySelector('[data-subject-placeholder]');
+  select.querySelectorAll('option[data-subject-option]').forEach(option => option.remove());
+  for (const asset of subjectAssets) {
+    const option = document.createElement('option');
+    option.value = asset.id;
+    option.dataset.subjectOption = 'true';
+    option.textContent = asset.name;
+    select.insertBefore(option, placeholder);
+  }
+  placeholder.disabled = subjectAssets.length > 0;
+  placeholder.hidden = subjectAssets.length > 0;
+  if (![...select.options].some(option => option.value === selectedObject && !option.disabled)) {
+    selectedObject = [...select.options].find(option => !option.disabled)?.value || 'title-line-1';
+  }
+  select.value = selectedObject;
   refreshTextLineOptions();
   toolbar.hidden = !backgroundData;
+  $('background-button').disabled = !backgroundData;
+  renderSubjectDownloads();
+  $('element-svg-button').disabled = !backgroundData || !editorObjects[selectedObject];
+  $('element-png-button').disabled = !backgroundData || !editorObjects[selectedObject];
+  $('psd-button').disabled = !backgroundData || !window.agPsd?.writePsd;
   syncToolbar();
 }
 
@@ -369,8 +611,8 @@ function setImageOptions() {
 style.addEventListener('change', () => {
   updateFrame();
   if (plan && style.value !== 'Auto recommend') {
-    $('recommended-style').textContent = style.value;
-    $('style-reason').textContent = 'Selected by you. Update the image descriptions if needed.';
+    $('recommended-style').textContent = styleLabels[style.value] || style.value;
+    $('style-reason').textContent = '직접 선택한 이미지 방향이에요. 설명을 원하는 대로 다듬어 보세요.';
     $('recommendation').classList.remove('hidden');
   }
   if (backgroundData) {
@@ -382,54 +624,21 @@ style.addEventListener('change', () => {
 });
 
 ['title', 'subtitle', 'details'].forEach(key => $(key).addEventListener('input', () => {
-  if (textArtAssets[key]?.length) {
-    textArtOutdated[key] = true;
-    if (selectedObject.startsWith(`art-${key}-line-`)) {
-      selectedObject = `${key}-line-1`;
-      $('editor-target').value = selectedObject;
-    }
-    setStatus(`${key === 'title' ? '제목' : key === 'subtitle' ? '부제목' : '상세 정보'}를 바꿨어요. 해당 그림 글씨를 다시 생성해 주세요.`);
-  }
   if (backgroundData) layoutTextObjects();
   updatePoster();
-  if (backgroundData) setImageOptions();
+  if (backgroundData) {
+    setImageOptions();
+    scheduleEditState();
+  }
 }));
-['background-prompt', 'subject-prompt'].forEach(key => $(key).addEventListener('input', updatePoster));
-$('subject-needed').addEventListener('change', () => $('subject-prompt').disabled = !$('subject-needed').checked);
-for (const key of ['title', 'subtitle', 'details']) $(`art-${key}-enabled`).addEventListener('change', () => {
-  if (!$(`art-${key}-enabled`).checked && selectedObject.startsWith(`art-${key}-line-`)) {
-    selectedObject = `${key}-line-1`;
-    $('editor-target').value = selectedObject;
-  }
-  if (textArtAssets[key]?.length && $(`art-${key}-enabled`).checked && textArtOutdated[key]) setStatus('문구를 수정했어요. 최신 문구로 그림 글씨를 다시 생성해 주세요.');
-  if (backgroundData) setImageOptions();
-  updatePoster();
-});
-
-$('reference').addEventListener('change', async event => {
-  const file = event.target.files?.[0];
-  if (!file) return;
-  if (file.size > 8 * 1024 * 1024) {
-    event.target.value = '';
-    setStatus('참고 이미지는 8MB 이하로 선택해 주세요.', true);
-    return;
-  }
-  referenceImage = await new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-  $('file-name').textContent = file.name;
-  setStatus('참고 이미지는 주 피사체 레이어 생성에 사용돼요.');
-});
+['background-prompt'].forEach(key => $(key).addEventListener('input', updatePoster));
 
 $('plan-button').addEventListener('click', async () => {
   if (source.value.trim().length < 8) return setStatus('포스터로 만들 내용을 조금 더 적어 주세요.', true);
   const button = $('plan-button');
   button.disabled = true;
   button.querySelector('span').textContent = '구성안을 만들고 있어요…';
-  setStatus('AI가 문구, 배경, 주 피사체 레이어를 계획하고 있어요.');
+  setStatus('AI가 공익광고 문구와 배경·상징 피사체 리소스를 계획하고 있어요.');
   try {
     const response = await fetch('/api/plan', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -442,19 +651,18 @@ $('plan-button').addEventListener('click', async () => {
     $('subtitle').value = data.subtitle;
     $('details').value = (data.details || []).join('\n');
     $('background-prompt').value = data.background_prompt;
-    $('subject-needed').checked = Boolean(data.subject_needed);
-    $('subject-prompt').value = data.subject_prompt || '';
-    $('subject-prompt').disabled = !data.subject_needed;
-    $('recommended-style').textContent = data.recommended_style;
+    subjectPlan = getSubjectPlan(data);
+    $('recommended-style').textContent = styleLabels[data.recommended_style] || data.recommended_style;
     $('style-reason').textContent = data.style_reason;
     $('recommendation').classList.remove('hidden');
     $('copy-editor').classList.remove('hidden');
+    $('review-callout').hidden = false;
+    $('copy-editor').classList.add('review-ready');
     layoutTextObjects();
-    updateFrame();
-    updatePoster();
-    $('result-title').textContent = '구성안이 준비됐어요';
-    $('result-sub').textContent = '문구와 이미지 레이어 설명을 확인한 다음 생성하세요.';
-    setStatus('중요한 사실 정보를 확인해 주세요. 배경·피사체·그림 글씨 생성은 각각 별도 API 요청이에요.');
+    $('result-title').textContent = '미리보기와 저장';
+    $('result-sub').textContent = '왼쪽 아래의 구성안을 확인한 뒤 이미지 리소스를 생성하세요.';
+    setStatus('날짜·장소·기관명 등 사실 정보를 확인한 뒤, 배경과 상징 피사체 리소스를 생성해 주세요.');
+    $('copy-editor').scrollIntoView({ behavior: 'smooth', block: 'start' });
   } catch (error) {
     setStatus(error.message, true);
   } finally {
@@ -466,10 +674,10 @@ $('plan-button').addEventListener('click', async () => {
 async function generateAsset(role, prompt) {
   const response = await fetch('/api/generate-layer', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ role, prompt, ratio: ratio.value, referenceImage: role === 'subject' ? referenceImage : '' })
+    body: JSON.stringify({ role, prompt, ratio: ratio.value })
   });
   const data = await response.json();
-  if (!response.ok) throw Error(data.error || `${role === 'subject' ? '주 피사체' : role === 'lettering' ? '그림 글씨' : '배경'} 생성에 실패했어요.`);
+  if (!response.ok) throw Error(data.error || `${role === 'subject' ? '상징 피사체' : '배경'} 생성에 실패했어요.`);
   return data.image;
 }
 
@@ -509,19 +717,21 @@ function trimTransparent(dataUrl) {
   });
 }
 
-function createImageObject(asset, width, height, kind) {
+function createImageObject(asset, width, height, kind, positionIndex = 0, subjectCount = 1) {
   const isSubject = kind === 'subject';
   const match = kind.match(/^art-(title|subtitle|details)-line-(\d+)$/);
   const textKey = match ? `${match[1]}-line-${match[2]}` : '';
   const textObject = textKey ? editorObjects[textKey] : null;
-  const maxWidth = width * (isSubject ? .58 : .86);
-  const maxHeight = isSubject ? height * .36 : textObject ? textObject.fontSize * 1.65 : height * .19;
+  const maxWidth = isSubject ? width * (subjectCount > 1 ? .78 / subjectCount : .58) : width * .86;
+  const maxHeight = isSubject ? height * (subjectCount > 1 ? .27 : .36) : textObject ? textObject.fontSize * 1.65 : height * .19;
   const aspect = asset.width / asset.height;
   const objectWidth = Math.min(maxWidth, maxHeight * aspect);
   const objectHeight = objectWidth / aspect;
+  const subjectX = subjectCount > 1 ? width * (positionIndex + .5) / subjectCount - objectWidth / 2 : Math.round(asset.x * width);
+  const subjectY = subjectCount > 1 ? height * .42 - objectHeight / 2 : Math.round(asset.y * height);
   return {
-    x: isSubject ? Math.round(asset.x * width) : textObject ? Math.round(textObject.x) : Math.round((width - objectWidth) / 2),
-    y: isSubject ? Math.round(asset.y * height) : textObject ? Math.round(textObject.y - textObject.fontSize * .9) : Math.round(height * .43),
+    x: isSubject ? Math.round(subjectX) : textObject ? Math.round(textObject.x) : Math.round((width - objectWidth) / 2),
+    y: isSubject ? Math.round(subjectY) : textObject ? Math.round(textObject.y - textObject.fontSize * .9) : Math.round(height * .43),
     width: objectWidth,
     height: objectHeight,
     scale: 100
@@ -530,78 +740,74 @@ function createImageObject(asset, width, height, kind) {
 
 $('generate-button').addEventListener('click', async () => {
   if (!plan) return;
+  $('review-callout').hidden = true;
+  $('copy-editor').classList.remove('review-ready');
   const button = $('generate-button');
   button.disabled = true;
   button.querySelector('span').textContent = '레이어를 생성하고 있어요…';
+  const chosenSubjects = subjectPlan ? [subjectPlan] : [];
   backgroundData = '';
-  subjectAsset = null;
-  textArtAssets = { title: [], subtitle: [], details: [] };
-  textArtOutdated = { title: false, subtitle: false, details: false };
+  subjectAssets = [];
+  subjectAssetCatalog = [];
+  for (const id of Object.keys(editorObjects)) if (isSubjectObject(id)) delete editorObjects[id];
+  for (const id of ['svg-button', 'png-button', 'psd-button', 'background-button', 'element-svg-button', 'element-png-button']) $(id).disabled = true;
+  editHistory = [];
+  historyIndex = -1;
+  updateHistoryButtons();
+  setImageOptions();
   needsRegenerate = false;
   $('svg-button').disabled = true;
   $('png-button').disabled = true;
-  poster.innerHTML = '<div class="generation-state"><span class="loader"></span><b>이미지 레이어를 준비하고 있어요</b><small>선택한 이미지 레이어는 각각 별도 요청으로 생성합니다.</small></div>';
+  poster.innerHTML = '<div class="generation-state"><span class="loader"></span><b>캠페인 이미지 리소스를 만들고 있어요</b><small>배경과 핵심 피사체 하나를 각각 별도 이미지 요청으로 생성합니다.</small></div>';
+  let activeSubjectName = '';
   try {
     const selectedStyle = style.value === 'Auto recommend' ? plan.recommended_style : style.value;
     const [width, height] = ratioSizes[ratio.value];
-    setStatus('배경 레이어 생성 중… 이미지 생성 API 사용료가 발생합니다.');
-    backgroundData = await generateAsset('background', `${$('background-prompt').value}. Background only: no main character, no central hero object, no lettering, text, numbers, logos, watermarks, or readable signage. Leave clear negative space for separately added headline and details. Style: ${selectedStyle}. ${ratio.value} composition.`);
+    setStatus('캠페인 배경 생성 중… AI 이미지 생성 API 비용은 개발자에게 발생합니다.');
+    backgroundData = await generateAsset('background', `${$('background-prompt').value}. Create a restrained public-service campaign background only. Use a realistic, quiet environment or tactile surface and a simple visual metaphor; leave generous negative space for editable typography. No subject, text, lettering, numbers, logos, watermarks, signage, decorative clutter, or competing focal points. Visual direction: ${selectedStyle}. ${ratio.value} composition.`);
 
-    if ($('subject-needed').checked) {
-      setStatus('주 피사체를 투명 배경 레이어로 생성 중… 별도 이미지 생성 비용이 발생합니다.');
-      const rawSubject = await generateAsset('subject', `${$('subject-prompt').value}. Isolated single main subject only, full silhouette visible, transparent background, no scenery, no text, no letters, no logos, no watermarks, no extra props. Compose at a scale suitable to overlay on a ${ratio.value} poster. Visual style: ${selectedStyle}.`);
-      subjectAsset = await trimTransparent(rawSubject);
-      editorObjects.subject = createImageObject(subjectAsset, width, height, 'subject');
+    for (const [index, option] of chosenSubjects.entries()) {
+      activeSubjectName = option.name;
+      setStatus(`피사체 ${index + 1}/${chosenSubjects.length} 생성 중: ${option.name}… AI 이미지 생성 API 비용은 개발자에게 발생합니다.`);
+      const rawSubject = await generateAsset('subject', `Create this selected campaign asset and nothing else: ${option.name}. Concept: ${option.idea}. Follow this visual description exactly: ${option.prompt}. The named subject must be clearly recognizable and must remain the main subject. Do not replace it with a different object, person, metaphor, or interpretation. Create exactly one isolated subject, full silhouette visible, on a transparent background. No scenery, text, letters, logos, watermarks, extra objects, or competing details. Clean, readable silhouette; restrained detail. Visual direction: ${selectedStyle}.`);
+      const trimmed = await trimTransparent(rawSubject);
+      const asset = { ...trimmed, id: option.id, name: option.name, idea: option.idea };
+      subjectAssets.push(asset);
+      subjectAssetCatalog.push(asset);
     }
-
-    const artFields = [
-      { key: 'title', label: '제목' },
-      { key: 'subtitle', label: '부제목' },
-      { key: 'details', label: '상세 정보' }
-    ];
-    for (const { key, label } of artFields) {
-      if (!$(`art-${key}-enabled`).checked) continue;
-      const exactText = $(`${key}`).value.trim();
-      if (!exactText) continue;
-      const maxChars = Math.max(5, Math.floor((width * .86) / (editorObjects[key].fontSize * (key === 'title' ? .92 : key === 'subtitle' ? .9 : .95))));
-      const lines = wrapLines(exactText, maxChars);
-      textArtAssets[key] = [];
-      textArtOutdated[key] = false;
-      for (let index = 0; index < lines.length; index++) {
-        setStatus(`${label} 그림 글씨 ${index + 1}/${lines.length}줄 생성 중… 각 줄마다 이미지 API 요청 1회가 사용됩니다.`);
-        const rawArt = await generateAsset('lettering', `Create one expressive Korean typographic lettering artwork containing exactly this single line and no other words: "${lines[index]}". Preserve every Korean character exactly. Hand-crafted editorial poster lettering, strong readable letter shapes, tasteful texture. Transparent background. No scenery, objects, logos, or watermark. Keep all characters inside the canvas with margins. Style direction: ${selectedStyle}.`);
-        const asset = await trimTransparent(rawArt);
-        textArtAssets[key].push(asset);
-        const objectId = `art-${key}-line-${index + 1}`;
-        editorObjects[objectId] = createImageObject(asset, width, height, objectId);
-      }
-    }
+    subjectAssets.forEach((asset, index) => {
+      editorObjects[asset.id] = createImageObject(asset, width, height, 'subject', index, subjectAssets.length);
+    });
 
     layoutTextObjects();
     defaultObjects = structuredClone(editorObjects);
     updatePoster();
     setImageOptions();
+    resetEditHistory();
     $('svg-button').disabled = false;
     $('png-button').disabled = false;
-    $('result-title').textContent = '편집 가능한 포스터가 완성됐어요';
-    $('result-sub').textContent = '문구·주 피사체·그림 글씨를 클릭해 편집할 수 있어요.';
-    const artLabels = artFields.filter(({ key }) => textArtAssets[key].length).map(({ key, label }) => `${label} 그림 글씨 ${textArtAssets[key].length}줄`);
-    const layers = ['배경', subjectAsset && '주 피사체', ...artLabels].filter(Boolean).join('·');
-    setStatus(`완성! ${layers}가 만들어졌어요. 글자를 클릭해 조정하고, 개체를 드래그해 위치를 바꾼 뒤 SVG 또는 PNG로 저장하세요.`);
+    $('result-title').textContent = '디자인 리소스가 준비됐어요';
+    $('result-sub').textContent = '문구와 생성된 리소스를 각각 편집하거나 다운로드할 수 있어요.';
+    const layers = ['배경', subjectAssets.length ? `피사체 ${subjectAssets.length}개` : ''].filter(Boolean).join('·');
+    setStatus(`완성! ${layers} 리소스를 만들었어요. 필요한 요소를 각각 내려받아 디자인에 활용하세요.`);
   } catch (error) {
     if (backgroundData) {
+      subjectAssets.forEach((asset, index) => {
+        editorObjects[asset.id] = createImageObject(asset, ...ratioSizes[ratio.value], 'subject', index, subjectAssets.length);
+      });
       layoutTextObjects();
       updatePoster();
       setImageOptions();
+      resetEditHistory();
       $('svg-button').disabled = false;
       $('png-button').disabled = false;
-      $('result-title').textContent = '일부 이미지 레이어를 만들지 못했어요';
-      $('result-sub').textContent = '완성된 배경과 문구는 편집용 SVG 또는 PNG로 저장할 수 있어요.';
+      $('result-title').textContent = '일부 이미지 리소스가 준비되지 않았어요';
+      $('result-sub').textContent = '생성된 배경은 PNG, 문구와 전체 구성은 SVG로 받을 수 있어요.';
     }
-    setStatus(error.message, true);
+    setStatus(activeSubjectName ? `${activeSubjectName} 피사체 생성에 실패했어요: ${error.message}` : error.message, true);
   } finally {
     button.disabled = false;
-    button.querySelector('span').textContent = '레이어별 이미지 생성';
+    button.querySelector('span').textContent = '캠페인 이미지 리소스 생성';
   }
 });
 
@@ -613,10 +819,116 @@ function saveBlob(blob, name) {
   setTimeout(() => URL.revokeObjectURL(link.href), 1200);
 }
 
+function saveDataUrl(dataUrl, name) {
+  const link = document.createElement('a');
+  link.href = dataUrl;
+  link.download = name;
+  link.click();
+}
+
+function selectedElementSvg() {
+  const parser = new DOMParser();
+  const sourceSvg = parser.parseFromString(makeSvg(true), 'image/svg+xml').documentElement;
+  const target = [...sourceSvg.querySelectorAll('[data-editable-object]')].find(node => node.dataset.editableObject === selectedObject);
+  if (!target) throw new Error('선택한 개체를 찾지 못했어요. 포스터에서 다시 선택해 주세요.');
+  const [width, height] = ratioSizes[ratio.value];
+  const output = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  output.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+  output.setAttribute('xmlns:inkscape', 'http://www.inkscape.org/namespaces/inkscape');
+  output.setAttribute('width', width);
+  output.setAttribute('height', height);
+  output.setAttribute('viewBox', `0 0 ${width} ${height}`);
+  const defs = sourceSvg.querySelector('defs');
+  if (defs) output.append(defs.cloneNode(true));
+  output.append(target.cloneNode(true));
+  return new XMLSerializer().serializeToString(output);
+}
+
+function selectedAssetName() {
+  return selectedObject.replace(/-line-/, '-').replace(/[^a-z0-9-]/gi, '-').toLowerCase();
+}
+
+function saveSelectedSvg() {
+  if (!backgroundData) return;
+  try {
+    saveBlob(new Blob([selectedElementSvg()], { type: 'image/svg+xml;charset=utf-8' }), `poster-element-${selectedAssetName()}.svg`);
+  } catch (error) { setStatus(error.message, true); }
+}
+
+function saveSelectedPng() {
+  if (!backgroundData) return;
+  const [width, height] = ratioSizes[ratio.value];
+  const url = URL.createObjectURL(new Blob([selectedElementSvg()], { type: 'image/svg+xml;charset=utf-8' }));
+  const image = new Image();
+  image.onload = () => {
+    const canvas = document.createElement('canvas');
+    canvas.width = width; canvas.height = height;
+    canvas.getContext('2d').drawImage(image, 0, 0, width, height);
+    canvas.toBlob(blob => {
+      if (blob) saveBlob(blob, `poster-element-${selectedAssetName()}.png`);
+      URL.revokeObjectURL(url);
+    }, 'image/png');
+  };
+  image.onerror = () => { URL.revokeObjectURL(url); setStatus('선택한 요소 PNG 저장에 실패했어요.', true); };
+  image.src = url;
+}
+
+function loadCanvas(dataUrl) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = image.naturalWidth; canvas.height = image.naturalHeight;
+      canvas.getContext('2d').drawImage(image, 0, 0);
+      resolve(canvas);
+    };
+    image.onerror = () => reject(new Error('PSD 레이어 이미지를 읽지 못했어요.'));
+    image.src = dataUrl;
+  });
+}
+
+async function savePsdResources() {
+  if (!backgroundData || !window.agPsd?.writePsd) return setStatus('PSD 내보내기 모듈을 불러오지 못했어요. 페이지를 새로고침해 주세요.', true);
+  const [width, height] = ratioSizes[ratio.value];
+  const backgroundCanvas = await loadCanvas(backgroundData);
+  const composite = document.createElement('canvas');
+  composite.width = width; composite.height = height;
+  const context = composite.getContext('2d');
+  context.drawImage(backgroundCanvas, 0, 0, width, height);
+  const children = [];
+  for (const asset of subjectAssets) {
+    const subjectCanvas = document.createElement('canvas');
+    subjectCanvas.width = width; subjectCanvas.height = height;
+    const subjectContext = subjectCanvas.getContext('2d');
+    const image = await loadCanvas(asset.data);
+    const object = editorObjects[asset.id];
+    const displayWidth = object.width * (object.scale || 100) / 100;
+    const displayHeight = object.height * (object.scale || 100) / 100;
+    const centerX = object.x + displayWidth / 2;
+    const centerY = object.y + displayHeight / 2;
+    subjectContext.translate(centerX, centerY);
+    subjectContext.rotate((object.rotation || 0) * Math.PI / 180);
+    subjectContext.drawImage(image, -displayWidth / 2, -displayHeight / 2, displayWidth, displayHeight);
+    context.drawImage(subjectCanvas, 0, 0);
+    children.push({ name: `02 ${asset.name}`, left: 0, top: 0, right: width, bottom: height, canvas: subjectCanvas });
+  }
+  children.push({ name: '01 Background', left: 0, top: 0, right: width, bottom: height, canvas: compositeBackgroundCanvas(backgroundCanvas, width, height) });
+  const data = window.agPsd.writePsd({ width, height, children, canvas: composite });
+  saveBlob(new Blob([data], { type: 'application/octet-stream' }), 'public-campaign-resources.psd');
+  setStatus(`배경과 피사체 ${subjectAssets.length}개를 독립 레이어로 담은 PSD를 저장했어요. 텍스트는 SVG에서 편집할 수 있어요.`);
+}
+
+function compositeBackgroundCanvas(sourceCanvas, width, height) {
+  const canvas = document.createElement('canvas');
+  canvas.width = width; canvas.height = height;
+  canvas.getContext('2d').drawImage(sourceCanvas, 0, 0, width, height);
+  return canvas;
+}
+
 function saveSvg() {
   if (!backgroundData || needsRegenerate) return;
   saveBlob(new Blob([makeSvg(true)], { type: 'image/svg+xml;charset=utf-8' }), 'poster-maker-editable.svg');
-  setStatus('SVG를 저장했어요. Illustrator에서 개별 글자·그림 개체를 선택할 수 있어요.');
+  setStatus('전체 SVG를 저장했어요. Illustrator에서 문구 줄과 피사체를 선택해 편집할 수 있어요.');
 }
 
 function savePng() {
@@ -639,7 +951,7 @@ function savePng() {
 
 $('editor-target').addEventListener('change', () => {
   selectedObject = $('editor-target').value;
-  syncToolbar();
+  setImageOptions();
   updatePoster();
 });
 ['editor-font', 'editor-size', 'editor-line-height', 'editor-letter-spacing', 'editor-color', 'editor-shadow'].forEach(id => {
@@ -649,7 +961,39 @@ $('editor-target').addEventListener('change', () => {
 $('editor-image-scale').addEventListener('input', updateImageScale);
 $('editor-rotation').addEventListener('input', updateRotation);
 $('reset-object').addEventListener('click', resetSelectedObject);
+$('undo-button').addEventListener('click', undoEdit);
+$('redo-button').addEventListener('click', redoEdit);
+document.addEventListener('keydown', event => {
+  if (!backgroundData) return;
+  const active = document.activeElement;
+  if (active?.classList.contains('poster-inline-editor')) return;
+  const isTypingField = active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement || active instanceof HTMLButtonElement || (active instanceof HTMLSelectElement && active.id !== 'editor-target');
+  if (event.key === 'Delete' && !isTypingField) {
+    if (!editorObjects[selectedObject]) return;
+    event.preventDefault();
+    deleteSelectedObject();
+    return;
+  }
+  if (!(event.ctrlKey || event.metaKey)) return;
+  const key = event.key.toLowerCase();
+  const undo = key === 'z' && !event.shiftKey;
+  const redo = key === 'y' || (key === 'z' && event.shiftKey);
+  if (!undo && !redo) return;
+  event.preventDefault();
+  if (undo) undoEdit();
+  else redoEdit();
+});
 $('svg-button').addEventListener('click', saveSvg);
 $('png-button').addEventListener('click', savePng);
+$('background-button').addEventListener('click', () => backgroundData && saveDataUrl(backgroundData, 'campaign-background.png'));
+$('element-svg-button').addEventListener('click', saveSelectedSvg);
+$('element-png-button').addEventListener('click', saveSelectedPng);
+$('psd-button').addEventListener('click', async () => {
+  const button = $('psd-button');
+  button.disabled = true;
+  try { await savePsdResources(); }
+  catch (error) { setStatus(error.message || 'PSD 저장에 실패했어요.', true); }
+  finally { button.disabled = !backgroundData || !window.agPsd?.writePsd; }
+});
 
 updateFrame();

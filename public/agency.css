@@ -1,0 +1,104 @@
+:root{
+  --bg:#f2f5f8;--panel:#fff;--panel2:#f7f9fb;--stroke:#d4dde6;--text:#1e2935;--muted:#657384;--soft:#516174;--acid:#17659a;--lav:#536f8c;--warm:#9c6236;
+}
+body{background:var(--bg);color:var(--text);font-family:'Noto Sans KR','Malgun Gothic',Arial,sans-serif;font-size:14px}
+.topbar{background:#153e60;border-bottom:1px solid #0e314e;box-shadow:0 2px 8px #173b5718}
+.brand{color:#fff;font-family:'Noto Sans KR',sans-serif;font-weight:700}
+.brand-icon{border:1px solid #9dbbd1;color:#fff;transform:none;font:700 18px 'Noto Sans KR',sans-serif}
+.brand small{font:10px 'Noto Sans KR',sans-serif;letter-spacing:.04em;color:#d3e0e9}
+.header-right{color:#e2ebf1;font:11px 'Noto Sans KR',sans-serif;letter-spacing:0}
+.status-dot{background:#8bd2aa;box-shadow:none}
+.page-heading{max-width:none;background:#fff;padding:22px max(5vw,28px) 20px;border-bottom:1px solid var(--stroke)}
+.eyebrow{font:11px 'Noto Sans KR',sans-serif;letter-spacing:0;color:#53677b}
+.eyebrow span{color:#9aa8b6}
+.page-heading h1{font:700 clamp(30px,3.7vw,44px)/1.3 'Noto Sans KR',sans-serif;letter-spacing:-.04em;color:#1c3449;margin:8px 0 6px}
+.page-heading h1 em{color:#17659a;font-style:normal}
+.page-heading p{font-size:13px;color:#617184}
+.section-heading{align-items:center}
+.brief-panel>.section-heading,.copy-editor>.section-heading{justify-content:flex-start;width:100%}
+.preview-top .section-heading{justify-content:flex-start;width:auto}
+.section-heading>div:last-child{text-align:left;max-width:calc(100% - 40px);transform:translateY(7px)}
+.studio-grid{max-width:1480px;padding-top:16px;padding-bottom:52px;gap:24px;grid-template-columns:minmax(370px,480px) minmax(450px,1fr);align-items:start}
+.brief-panel,.preview-panel{background:#fff;border:1px solid var(--stroke);border-radius:6px;box-shadow:0 2px 8px #1c34490a;padding:20px}
+.section-heading h2{color:#243b50;font:700 14px 'Noto Sans KR',sans-serif}
+.section-heading p{color:#69798b;font-size:11px}
+.step{width:28px;height:28px;border:1px solid #b4c7d7;border-radius:4px;background:#f1f6fa;color:#175b88;font:700 10px 'Noto Sans KR',sans-serif}
+.source,.copy-editor input,.copy-editor textarea,.settings-grid select{border:1px solid #cbd6e0;border-radius:4px;background:#fff;color:#263748;font:12px/1.7 'Noto Sans KR','Malgun Gothic',sans-serif}
+.source{min-height:164px}
+.source::placeholder{color:#8491a0}
+.source:focus,.copy-editor input:focus,.copy-editor textarea:focus,.settings-grid select:focus{border-color:#3682b4;box-shadow:0 0 0 3px #3682b41c}
+.source-meta,.settings-grid label,.copy-editor>label{color:#4f6172;font-family:'Noto Sans KR',sans-serif;letter-spacing:0}
+.source-meta{font-size:10px}
+.creative-heading{border-top:1px solid #e2e8ee;padding-top:20px}
+.settings-grid select{height:38px;padding:0 9px}
+.upload{background:#f8fafc;border-color:#c4d2de;color:#3c5369}
+.upload b,.upload small,.file-name{color:#415b72}
+.upload-symbol{color:#17659a}
+.primary{border:1px solid #174f78;border-radius:4px;background:#174f78;color:#fff;min-height:42px;font:700 12px 'Noto Sans KR',sans-serif}
+.primary:hover{background:#0f4067;border-color:#0f4067}
+.primary:disabled{background:#6f8799;color:#fff}
+.cost-note{color:#69798a!important;font:10px/1.6 'Noto Sans KR',sans-serif!important;letter-spacing:0!important}
+.copy-editor{border-top:1px solid #dce4eb}
+.copy-editor>label{font-size:10px}
+.copy-editor>label small{color:#68798a!important;font:9px 'Noto Sans KR',sans-serif}
+.recommendation{border:1px solid #cbdce9;border-radius:4px;background:#f3f8fc}
+.recommendation small{color:#526d82}
+.recommendation b{color:#1d405c}
+.recommendation i{color:#596e80}
+.sparkle{color:#17659a}
+.preview-top{padding-bottom:15px;border-bottom:1px solid #e2e8ee}
+.preview-top .section-heading h2{font-size:14px}
+.export-actions button{height:34px;padding:0 11px;border:1px solid #bfccd7;border-radius:4px;background:#fff;color:#31516b;font:10px 'Noto Sans KR',sans-serif}
+.export-actions button:hover:not(:disabled){border-color:#17659a;color:#124c73;background:#f4f8fb}
+.export-actions .download{border-color:#174f78;background:#174f78;color:#fff}
+.export-actions .download:hover:not(:disabled){background:#0f4067;color:#fff}
+.export-actions #psd-button{border-color:#7298b1;color:#174f78}
+.preview-stage{min-height:490px;border:1px solid #d6dfe7;border-radius:4px;background:#eef2f6;padding:22px}
+.style-auto .poster-art{background:#e7edf2;background-image:linear-gradient(0deg,transparent 24%,#4160780b 25%,#4160780b 26%,transparent 27%,transparent 74%,#4160780b 75%,#4160780b 76%,transparent 77%),linear-gradient(90deg,transparent 24%,#4160780b 25%,#4160780b 26%,transparent 27%,transparent 74%,#4160780b 75%,#4160780b 76%,transparent 77%);background-size:42px 42px}
+.style-auto .shape-a{background:#91a9ba;opacity:.8}
+.style-auto .shape-b{background:#52748e}
+.style-auto .shape-c{background:#c4d1c2}
+.style-auto .poster-overlay{background:linear-gradient(180deg,#10263808 0%,transparent 48%,#10263866 100%)}
+.placeholder-text{color:#29455d}
+.placeholder-text small{color:#516d83}
+.poster-main h3{font-family:'Noto Sans KR','Malgun Gothic',sans-serif}
+.poster-subtitle{font-family:'Noto Sans KR','Malgun Gothic',sans-serif}
+.preview-meta{color:#637487;font:10px 'Noto Sans KR',sans-serif;letter-spacing:0}
+.resource-actions button{border:1px solid #c5d1dc;border-radius:4px;background:#fff;color:#31516b;font:10px 'Noto Sans KR',sans-serif}
+.resource-actions button:hover:not(:disabled){border-color:#17659a;color:#124c73;background:#f4f8fb}
+.resource-actions button:disabled,.export-actions button:disabled{opacity:.48}
+.status{border:1px solid #cbd9e5;border-radius:4px;background:#f3f8fc;color:#36546d;font:11px/1.6 'Noto Sans KR',sans-serif}
+.status.error{border-color:#d6a5a1;background:#fff6f5;color:#8b3530}
+.status-icon{border-color:#8da6b9;color:#315d7e}
+.format-card{border-bottom:1px solid #e0e7ed}
+.format-icon{border-color:#b5c7d6;color:#17659a}
+.format-card b{color:#2b465e;font-size:11px}
+.format-card p{color:#617487;font:10px/1.65 'Noto Sans KR',sans-serif}
+.editor-toolbar{border:1px solid #cbd7e1;border-radius:4px;background:#f5f8fa}
+.toolbar-heading b{color:#2d465c;font:700 11px 'Noto Sans KR',sans-serif}
+.toolbar-dot{background:#32825f;box-shadow:none}
+.history-buttons button,.reset-object{border:1px solid #c2cfda;border-radius:4px;background:#fff;color:#34536c;font:10px 'Noto Sans KR',sans-serif}
+.history-buttons button:hover:not(:disabled),.reset-object:hover{border-color:#17659a;color:#124c73;background:#f4f8fb}
+.history-buttons button:disabled{opacity:.45}
+.toolbar-field{color:#52687c;font:9px 'Noto Sans KR',sans-serif}
+.toolbar-field select,.toolbar-field input[type=number]{border:1px solid #c5d1dc;border-radius:4px;background:#fff;color:#263b4f;font:10px 'Noto Sans KR',sans-serif}
+.toolbar-field select:focus,.toolbar-field input:focus{border-color:#3682b4}
+.toolbar-field.color-field input{border:1px solid #c5d1dc;background:#fff}
+.shadow-toggle{color:#52687c;font:10px 'Noto Sans KR',sans-serif}
+.shadow-toggle input{accent-color:#17659a}
+.image-tools,.rotation-tool{color:#35536c;font:10px 'Noto Sans KR',sans-serif}
+.image-tools input,.rotation-tool input{accent-color:#17659a}
+.image-tools b,.rotation-tool b{color:#34536c;font-family:'Noto Sans KR',sans-serif}
+.copy-editor{scroll-margin-top:90px}
+.copy-editor.review-ready{border-top-color:#17659a}
+.review-callout{border:1px solid #b8d0e1;border-radius:4px;background:#eef6fb;color:#34566e;font:11px/1.6 'Noto Sans KR',sans-serif}
+.review-callout>span{color:#17659a}
+.review-callout>b{color:#21435d}
+.poster-inline-editor{border-color:#2876a9;background:#fff;color:#233b50;box-shadow:0 5px 20px #173b5726;outline:2px solid #2876a933}
+.generation-state{color:#2c4962}
+.generation-state small{color:#6b7c8c}
+.loader{border-color:#c3d0da;border-top-color:#17659a}
+footer{background:#e9eef3;border-top:1px solid #d3dce5;color:#52677a;font:10px 'Noto Sans KR',sans-serif;letter-spacing:0}
+footer i{color:#6d7e8c}
+@media(max-width:950px){.brief-panel,.preview-panel{padding:16px}}
+@media(max-width:760px){.studio-grid{padding-top:16px}.brief-panel,.preview-panel{padding:14px}}

@@ -6,7 +6,11 @@
 .toolbar-heading b{font-size:10px;font-weight:600}
 .toolbar-heading small{margin-left:auto;color:#7e8586;font-size:9px}
 .toolbar-dot{width:7px;height:7px;border-radius:50%;background:var(--acid);box-shadow:0 0 8px #c2f07877}
-.toolbar-controls,.text-tools{display:flex;align-items:end;flex-wrap:wrap;gap:8px}
+.history-buttons{display:flex;gap:5px;margin-left:8px}
+.history-buttons button{height:26px;padding:0 8px;border:1px solid #34393a;background:#17191a;color:#e7e9e5;font:9px 'DM Sans',sans-serif;cursor:pointer}
+.history-buttons button:hover:not(:disabled){border-color:var(--acid);color:var(--acid)}
+.history-buttons button:disabled{opacity:.4;cursor:not-allowed}
+.toolbar-controls,.text-tools{display:flex;align-items:center;flex-wrap:wrap;gap:8px}
 .text-tools{flex:1}
 .toolbar-field{display:flex;flex-direction:column;gap:5px;color:#8f9697;font-size:8px;white-space:nowrap}
 .toolbar-field select,.toolbar-field input[type=number]{height:31px;min-width:70px;border:1px solid #34393a;border-radius:2px;background:#17191a;color:#e7e9e5;padding:0 7px;font:10px 'DM Sans',sans-serif;outline:none}
@@ -18,18 +22,29 @@
 .shadow-toggle{height:31px;display:flex;align-items:center;gap:5px;color:#aeb3b1;font-size:9px;white-space:nowrap}
 .shadow-toggle input{accent-color:var(--acid)}
 .image-tools{flex:1;align-self:center;display:flex;align-items:center;gap:12px;color:#fff;font-size:10px}
-.image-tools label{display:flex;align-items:center;gap:7px;white-space:nowrap}
+.image-tools label{height:31px;display:flex;align-items:center;gap:7px;white-space:nowrap}
 .image-tools input{width:105px;accent-color:var(--acid)}
 .image-tools b{min-width:35px;color:#d8ded7;font:9px 'DM Mono'}
 .rotation-tool{display:flex;align-items:center;gap:6px;color:#fff;font-size:10px;white-space:nowrap}
+.toolbar-controls>.rotation-tool,.toolbar-controls>.image-tools,.toolbar-controls>.reset-object{align-self:center}
 .rotation-tool input{width:105px;accent-color:var(--acid)}
 .rotation-tool b{min-width:32px;color:#fff;font:10px 'DM Mono'}
+.resource-actions{display:flex;flex-wrap:wrap;gap:7px;margin-top:13px}
+.resource-actions button{min-height:34px;padding:0 11px;border:1px solid #45494a;background:#141617;color:#fff;font:10px 'DM Sans',sans-serif;cursor:pointer}
+.resource-actions button:hover:not(:disabled){border-color:var(--acid);color:var(--acid)}
+.resource-actions button:disabled,.export-actions button:disabled{opacity:.45;cursor:not-allowed}
+.export-actions #psd-button{border-color:#c2f078;color:#e3f6c8}
+.style-public-campaign-cinematic .poster-art{background:linear-gradient(155deg,#171a20,#71604a 58%,#171717)}
+.style-minimal-still-life .poster-art{background:linear-gradient(150deg,#e9e5dc,#b8b4a8)}
+.style-minimal-still-life .poster-main h3{color:#202427;text-shadow:none}
+.style-human-centered-documentary .poster-art{background:linear-gradient(150deg,#778a8e,#2e4247 62%,#182326)}
+.style-editorial-campaign .poster-art{background:linear-gradient(155deg,#eee6d7,#bd9272 60%,#45535a)}
+.style-editorial-campaign .poster-main h3{color:#242729;text-shadow:none}
 .cost-note{color:#fff!important;font-size:11px!important;letter-spacing:.04em!important}
 .status{color:#fff;font-size:11px}
 .format-card p{color:#fff;font-size:11px;line-height:1.6}
 .toolbar-heading small{color:#fff;font-size:10px}
-.layer-toggle small,.copy-editor>label small,.upload small,.section-heading p,.recommendation i,.recommendation small{color:#fff!important}
-.source-meta,.settings-grid label,.copy-editor>label,.copy-editor>label small,.layer-toggle,.layer-toggle small,.upload b,.upload small{color:#fff!important}
+.layer-toggle small{color:#fff!important}
 .source-meta{font-size:10px}
 .settings-grid label,.copy-editor>label{font-size:9px}
 .copy-editor>label small,.layer-toggle small{font-size:9px}
@@ -44,4 +59,13 @@
 .poster .editable-object.is-selected{filter:drop-shadow(0 0 2px #c2f078);}
 .poster .editable-image-object{cursor:grab;touch-action:none}
 .poster .editable-image-object.is-selected{filter:drop-shadow(0 0 4px #c2f078)}
-@media(max-width:760px){.toolbar-heading{align-items:flex-start;flex-wrap:wrap}.toolbar-heading small{width:100%;margin-left:15px}.toolbar-controls{align-items:flex-start;flex-wrap:wrap}.text-tools{width:100%;flex-basis:100%}.toolbar-field.font-field{flex:1}.toolbar-field.font-field select{width:100%}.reset-object{margin-left:auto}}
+.poster-inline-editor{position:fixed;z-index:20;box-sizing:border-box;border:1px solid #c2f078;border-radius:3px;background:#111314;color:#fff;padding:6px 9px;font:600 18px/1.25 'Noto Sans KR','Malgun Gothic',Arial,sans-serif;box-shadow:0 5px 22px #000b;outline:2px solid #c2f07855}
+.copy-editor{scroll-margin-top:100px}
+.copy-editor.review-ready{border-top-color:var(--acid)}
+.review-callout{display:flex;align-items:center;gap:7px;margin:0 0 17px;padding:11px 12px;border:1px solid #607946;background:#172015;color:#e8f4d8;font-size:11px;line-height:1.5}
+.review-callout[hidden]{display:none}
+.review-callout>span{color:var(--acid);font-size:16px}
+.review-callout>b{color:#fff}
+.subject-downloads{display:contents}
+@media(max-width:760px){.toolbar-heading{align-items:flex-start;flex-wrap:wrap}.toolbar-heading small{width:100%;margin-left:15px}.toolbar-controls{align-items:flex-start;flex-wrap:wrap}.text-tools{width:100%;flex-basis:100%}.toolbar-field.font-field{flex:1}.toolbar-field.font-field select{width:100%}.reset-object{margin-left:auto}.export-actions{flex-wrap:wrap}.resource-actions button{flex:1 1 140px}}
+@media(max-width:760px){.toolbar-controls:has(.image-tools:not([hidden])){align-items:center;flex-wrap:nowrap;overflow-x:auto;padding-bottom:3px}}
