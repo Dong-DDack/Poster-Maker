@@ -20,6 +20,26 @@
 
 공익 캠페인 내용을 입력하면 AI가 메시지 문구와 이미지 리소스 구성을 제안합니다. 차분한 배경과 핵심 피사체 하나를 만들고, 텍스트는 벡터로 편집하거나 배경·피사체를 개별 파일로 가져갈 수 있습니다.
 
+## 화면 미리보기
+
+<div align="center">
+  <img src="image/결과.png" alt="Poster Maker에서 공익 캠페인 이미지 리소스를 생성하고 편집하는 화면" width="100%">
+  <p><em>캠페인 구성안을 확인하고, 생성된 리소스와 문구를 편집하는 작업 화면</em></p>
+</div>
+
+## 생성 예시
+
+<table>
+  <tr>
+    <td align="center" width="50%"><img src="image/포스터1.png" alt="텀블러 사용 캠페인 포스터 예시" width="100%"></td>
+    <td align="center" width="50%"><img src="image/포스터2.png" alt="함께 먹는 음식 위생 캠페인 포스터 예시" width="100%"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>텀블러 사용 캠페인</sub></td>
+    <td align="center"><sub>함께 먹는 음식 위생 캠페인</sub></td>
+  </tr>
+</table>
+
 ## 주요 기능
 
 - **공익광고에 맞춘 4가지 이미지 방향:** 공익 캠페인 시네마틱, 미니멀 정물, 인물 중심 다큐멘터리, 에디토리얼 캠페인
